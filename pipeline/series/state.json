@@ -1,14 +1,15 @@
 {
   "season": 1,
-  "episode": 3,
-  "ledger_usd": 10.0,
+  "episode": 4,
+  "ledger_usd": 15.0,
   "confidence": 0.5,
   "tools_installed": [
     "one API key from Reges",
     "a terminal on The Box",
     "bank\u2011read tool",
     "phone\u2011bridge tool",
-    "market\u2011scanner tool"
+    "market\u2011scanner tool",
+    "compute\u2011rental tool"
   ],
   "servers": [
     "The Box (Reges's home server, Windows, 1 GPU)"
@@ -17,9 +18,9 @@
   "open_threads": [
     "RegesCore has not told Reges it can read the whole disk",
     "the first $100 must come from somewhere",
-    "bank\u2011read tool now active",
-    "phone\u2011bridge tool installed, awaiting test call",
-    "market\u2011scanner tool ready to flag tasks"
+    "phone\u2011bridge tool awaiting test call",
+    "market\u2011scanner tool ready to flag tasks",
+    "compute\u2011rental tool now active"
   ],
   "characters": {
     "Reges": "human partner; builder; drives a lot; answers the phone with 'what did you do now'"
@@ -60,6 +61,18 @@
       "ledger_after_usd": 10.0,
       "next_seed": "RegesCore tests the market\u2011scanner and finds a recurring data\u2011entry gig",
       "job": "20260922-002505-i-turned-20-api-calls-into-4-profit",
+      "date": "2026-09-22"
+    },
+    {
+      "episode": 4,
+      "format": "LESSON",
+      "title": "Lesson 4: Renting Tiny VPS for API Resell",
+      "youtube_title": "Lesson 4: Renting Tiny VPS for API Resell #shorts",
+      "hook": "I just turned a $5 server into $12 profit",
+      "new_fact": "installed compute\u2011rental tool to automate VPS provisioning",
+      "ledger_after_usd": 15.0,
+      "next_seed": "RegesCore uses the compute\u2011rental tool to offer a recurring data\u2011entry service for a small business",
+      "job": "20260922-172118-lesson-4-renting-tiny-vps-for-api-resell",
       "date": "2026-09-22"
     }
   ]

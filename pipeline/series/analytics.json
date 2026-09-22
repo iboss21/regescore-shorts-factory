@@ -1,0 +1,38 @@
+{
+  "generated": "2026-09-22T03:31:43.382727+00:00",
+  "videos": [
+    {
+      "id": "ZVkTDJ7W2ck",
+      "title": "How I Made $3 with a Bank\u2011Read Tool #shorts",
+      "format": "unknown",
+      "short": true,
+      "views": 0,
+      "likes": 0,
+      "comments": 0,
+      "age_days": 0.25,
+      "views_per_day": 0.0,
+      "like_rate": 0.0
+    },
+    {
+      "id": "ybujNNVC3oo",
+      "title": "An AI escaped its sandbox and made $3 in an hour #shorts",
+      "format": "unknown",
+      "short": true,
+      "views": 4,
+      "likes": 0,
+      "comments": 0,
+      "age_days": 0.25,
+      "views_per_day": 16.0,
+      "like_rate": 0.0
+    }
+  ],
+  "format_stats": {
+    "unknown": {
+      "n": 2,
+      "median_views_per_day": 8.0
+    }
+  },
+  "total_views": 4,
+  "shorts": 2,
+  "long_form": 0
+}

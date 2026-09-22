@@ -1,0 +1,83 @@
+{
+  "id": "RegesCoreAnalytics0001",
+  "name": "RegesCore - Weekly analytics -> show bible",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [ { "field": "cronExpression", "expression": "0 7 * * 1" } ] } },
+      "id": "b1000000-0000-4000-8000-000000000001",
+      "name": "Monday 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {},
+      "id": "b1000000-0000-4000-8000-000000000002",
+      "name": "Manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 200]
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 50,
+        "filters": { "channelId": "UCjf1qdios9P3mrZmhI6aUWw" },
+        "options": { "order": "date" }
+      },
+      "id": "b1000000-0000-4000-8000-000000000003",
+      "name": "List channel videos",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [260, 100],
+      "credentials": { "youTubeOAuth2Api": { "id": "Y3YWdPzoklYK4IoW", "name": "YouTube - RegesCore AI" } }
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "get",
+        "videoId": "={{ $json.id.videoId || $json.id }}",
+        "part": ["snippet", "statistics", "contentDetails"],
+        "options": {}
+      },
+      "id": "b1000000-0000-4000-8000-000000000004",
+      "name": "Get stats",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [520, 100],
+      "credentials": { "youTubeOAuth2Api": { "id": "Y3YWdPzoklYK4IoW", "name": "YouTube - RegesCore AI" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flatten YouTube video resources into the shape analytics.py expects, then base64 for the shell.\nconst iso = (d) => { if (!d) return 0; const m = /PT(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?/.exec(d); return m ? (+(m[1]||0))*3600 + (+(m[2]||0))*60 + (+(m[3]||0)) : 0; };\nconst rows = $input.all().map(i => i.json).filter(v => v && v.id).map(v => ({\n  id: v.id,\n  title: v.snippet?.title,\n  publishedAt: v.snippet?.publishedAt,\n  views: Number(v.statistics?.viewCount || 0),\n  likes: Number(v.statistics?.likeCount || 0),\n  comments: Number(v.statistics?.commentCount || 0),\n  duration: iso(v.contentDetails?.duration),\n}));\nconst pipelineDir = ($env.SHORTS_PIPELINE_DIR || 'G:/YoutubeFaceless-Channel and social media/pipeline').split(String.fromCharCode(92)).join('/');\nconst b64 = Buffer.from(JSON.stringify(rows), 'utf8').toString('base64');\nreturn [{ json: { count: rows.length, command: `python \"${pipelineDir}/analytics.py\" --json-b64 ${b64}` } }];"
+      },
+      "id": "b1000000-0000-4000-8000-000000000005",
+      "name": "Shape rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 100]
+    },
+    {
+      "parameters": { "command": "={{ $json.command }}" },
+      "id": "b1000000-0000-4000-8000-000000000006",
+      "name": "Update bible (analytics.py)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1040, 100]
+    }
+  ],
+  "connections": {
+    "Monday 07:00": { "main": [[{ "node": "List channel videos", "type": "main", "index": 0 }]] },
+    "Manual": { "main": [[{ "node": "List channel videos", "type": "main", "index": 0 }]] },
+    "List channel videos": { "main": [[{ "node": "Get stats", "type": "main", "index": 0 }]] },
+    "Get stats": { "main": [[{ "node": "Shape rows", "type": "main", "index": 0 }]] },
+    "Shape rows": { "main": [[{ "node": "Update bible (analytics.py)", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "pinData": {},
+  "tags": []
+}

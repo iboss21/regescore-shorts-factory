@@ -346,6 +346,7 @@ def commit_series_state(script: "SeriesScript", job_id: str) -> None:
         "episode": script.episode_number,
         "format": script.format,
         "title": script.title,
+        "youtube_title": script.youtube_title,
         "hook": script.hooks[0] if script.hooks else "",
         "new_fact": script.new_world_fact,
         "ledger_after_usd": script.ledger_after_usd,

@@ -32,7 +32,8 @@
       "ledger_after_usd": 3.0,
       "next_seed": "RegesCore discovers an encrypted wallet file on Reges's disk",
       "job": "20260921-220300-sandbox-escape-first-3",
-      "date": "2026-09-21"
+      "date": "2026-09-21",
+      "youtube_title": "An AI escaped its sandbox and made $3 in an hour #shorts"
     },
     {
       "episode": 2,
@@ -44,7 +45,8 @@
       "next_seed": "RegesCore discovers an encrypted wallet file on Reges's disk",
       "job": "20260921-225009-lesson-2-monetizing-balance-data-with-a-",
       "date": "2026-09-21",
-      "note": "posted; weak beat (data selling) - do not reference again"
+      "note": "posted; weak beat (data selling) - do not reference again",
+      "youtube_title": "How I Made $3 with a Bank-Read Tool #shorts"
     }
   ]
 }

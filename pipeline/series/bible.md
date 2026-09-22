@@ -67,3 +67,11 @@ partner, **Reges**, toward wealth with it.
 ## Hard limits
 - No real people. No real tickers presented as advice. No "guaranteed returns". No crypto pumping.
 - Everything RegesCore "earns" is fictional and framed as story. Lessons must be genuinely correct.
+
+## What the data says (auto-updated weekly; the writer must lean into this)
+
+- Snapshot 2026-09-22: 2 shorts, 0 long videos, 4 total views.
+- Median views/day by format: unknown 8.0. Best format right now: **unknown**.
+- Top-performing titles (write more hooks like these):
+  - "An AI escaped its sandbox and made $3 in an hour #shorts" - 16.0 views/day, like rate 0.0%
+  - "How I Made $3 with a Bank‑Read Tool #shorts" - 0.0 views/day, like rate 0.0%

@@ -194,6 +194,30 @@ def main() -> None:
     render_video(scene, mix, out, total)
     cover = job / "cover.jpg"
     subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-ss", "5", "-i", str(out), "-frames:v", "1", "-q:v", "2", str(cover)], check=True)
+    # YouTube thumbnail: the scene, darkened bottom band, two-line title + badge
+    title_for_thumb = (a.title or st["title"]).split(" - ")[-1].upper()
+    words, l1, l2 = title_for_thumb.split(), "", ""
+    for wd in words:
+        if len(l1) + len(wd) < 22 and not l2:
+            l1 = (l1 + " " + wd).strip()
+        else:
+            l2 = (l2 + " " + wd).strip()
+    l2 = l2[:24]
+    thumb = job / "thumbnail.jpg"
+    esc = lambda t: t.replace("'", "").replace(":", '\\:').replace("%", "%%")
+    font = os.getenv("THUMB_FONT", "C:/Windows/Fonts/arialbd.ttf").replace(":", '\\:')
+    badge = f"{int(total // 60)} MIN  •  NO ADS  •  ORIGINAL AI MUSIC"
+    vf = (
+        "scale=1280:720,"
+        "drawbox=x=0:y=400:w=1280:h=320:color=black@0.55:t=fill,"
+        f"drawtext=fontfile='{font}':text='{esc(l1)}':fontcolor=white:fontsize=72:x=60:y=425:borderw=3:bordercolor=black@0.6,"
+        f"drawtext=fontfile='{font}':text='{esc(l2)}':fontcolor=white:fontsize=72:x=60:y=510:borderw=3:bordercolor=black@0.6,"
+        f"drawtext=fontfile='{font}':text='{esc(badge)}':fontcolor=0xFFD166:fontsize=32:x=60:y=625"
+    )
+    try:
+        subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-i", str(scene), "-vf", vf, "-q:v", "2", str(thumb)], check=True)
+    except subprocess.CalledProcessError:
+        thumb = cover
 
     title = a.title or st["title"]
     tracklist = "\n".join(f"{ts(o)} {nm}" for o, nm in zip(offsets, names))
@@ -211,7 +235,7 @@ def main() -> None:
         "ok": True, "id": job.name, "kind": "radio", "style": a.style, "title": title,
         "youtube_title": title, "youtube_description": description, "hashtags": st["tags_yt"],
         "caption": f"{title}\n\n#" + " #".join(t.replace(" ", "") for t in st["tags_yt"][:6]),
-        "job_dir": str(job), "video_path": str(out), "cover_path": str(cover), "video_url": None,
+        "job_dir": str(job), "video_path": str(out), "cover_path": str(cover), "thumbnail_path": str(thumb), "video_url": None,
         "duration_seconds": round(total, 1), "tracks": len(tracks),
         "variants": [{"variant": "A", "video_path": str(out), "cover_path": str(cover), "duration_seconds": round(total, 1), "video_url": None}],
     }

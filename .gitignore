@@ -10,3 +10,4 @@ n8n-nodes-Social-Shorts/
 **/node_modules/
 **/dist/
 __pycache__/
+dist/

@@ -446,6 +446,8 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Caption,{font},{size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,{outline},2,2,60,60,{marginv},1
+Style: Brand,{font},40,&H00E6E6E6,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,2,1,7,50,50,120,1
+Style: Badge,{font},40,&H0066D1FF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,2,1,9,50,50,120,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -456,9 +458,13 @@ def _escape_ass(t: str) -> str:
     return t.replace("\\", "\\\\").replace("{", "(").replace("}", ")")
 
 
-def write_captions(words: List[Word], ass_path: Path, group: int = WORDS_PER_CAPTION) -> None:
-    """Group words into short caption cards (TikTok style) with a pop-in animation."""
+def write_captions(words: List[Word], ass_path: Path, group: int = WORDS_PER_CAPTION, brand: str = "", badge: str = "", total: float = 0.0) -> None:
+    """Group words into short caption cards (TikTok style) with a pop-in animation, plus optional brand/badge overlays."""
     events = []
+    if total and brand:
+        events.append(f"Dialogue: 0,{_ass_ts(0)},{_ass_ts(total)},Brand,,0,0,0,,{_escape_ass(brand)}")
+    if total and badge:
+        events.append(f"Dialogue: 0,{_ass_ts(0)},{_ass_ts(total)},Badge,,0,0,0,,{_escape_ass(badge)}")
     i = 0
     while i < len(words):
         chunk = words[i : i + group]
@@ -720,7 +726,10 @@ def main() -> None:
 
         log(f"[3/5] Captions {tag} ...")
         srt = job_dir / f"captions_{tag}.ass"
-        write_captions(words, srt)
+        badge = ""
+        if series_script is not None:
+            badge = f"S{_load_state().get('season', 1)} • E{series_script.episode_number}" if series_script.format != "LOG" else f"LOG {series_script.episode_number}"
+        write_captions(words, srt, brand=os.getenv("BRAND_HANDLE", "@RegesCore-Ai"), badge=badge, total=dur)
 
         log(f"[4/5] Rendering {tag} ...")
         mp4 = job_dir / f"short_{tag}.mp4"

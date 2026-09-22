@@ -218,7 +218,8 @@
       "position": [
         1320,
         360
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -283,7 +284,8 @@
       "position": [
         2360,
         120
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -355,7 +357,8 @@
       "position": [
         1580,
         620
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -425,7 +428,8 @@
       "position": [
         2100,
         -160
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -451,7 +455,8 @@
           "id": "Y3YWdPzoklYK4IoW",
           "name": "YouTube - RegesCore AI"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {

@@ -1,0 +1,559 @@
+{
+  "name": "RegesCore AI - Shorts Pipeline (story -> video -> YouTube + Instagram)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shortform",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Webhook (Discord / API)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "shortform"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Daily 9am (autopilot)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        220
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "Manual test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalise whatever triggered us into one job for make_short.py.\n// Series mode: RegesCore AI. The story continues from pipeline/series/state.json,\n// so no topic bank is needed - Claude writes the next beat. Formats rotate by weekday.\nconst ROTATION = ['episode', 'lesson', 'episode', 'log', 'episode', 'lesson', 'episode']; // Sun..Sat\n\nconst body = $input.first().json.body || $input.first().json || {};\nconst day = new Date().getDay();\n\nconst format = (body.format || ROTATION[day]).toString().toLowerCase();\nconst topic = (body.prompt || body.topic || '').toString().trim();   // optional producer direction\nconst duration = Number(body.duration) || (format === 'log' ? 35 : 55);\nconst variants = body.ab === false || body.ab === 'false' ? 1 : 2;\nconst series = body.series === undefined ? true : !!body.series;\n\nconst p = body.platforms || {};\nconst platforms = {\n  yt: p.yt !== undefined ? !!p.yt : true,\n  ig: p.ig !== undefined ? !!p.ig : true,\n  tiktok: p.tiktok !== undefined ? !!p.tiktok : true,\n};\n\nconst from_result = (body.from_result || '').toString();   // re-post an already rendered job\nconst job = { topic, duration, variants, format, series, from_result };\nconst jobB64 = Buffer.from(JSON.stringify(job), 'utf8').toString('base64');\nconst BS = String.fromCharCode(92);\nconst pipelineDir = ($env.SHORTS_PIPELINE_DIR || 'G:/YoutubeFaceless-Channel and social media/pipeline').split(BS).join('/');\n\nreturn [{ json: { topic, duration, variants, format, series, platforms, jobB64, pipelineDir, interaction: body.interaction || null } }];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Prepare job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=python \"{{ $json.pipelineDir }}/make_short.py\" --job-b64 {{ $json.jobB64 }} --quiet"
+      },
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "Render short (make_short.py)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        540,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// make_short.py prints one JSON line last. Merge it with the job context.\nconst out = $input.first().json;\nif (out.exitCode !== 0) {\n  throw new Error(`make_short.py failed (exit ${out.exitCode}):\\n${out.stderr}`);\n}\nconst lines = (out.stdout || '').trim().split(/\\r?\\n/);\nconst result = JSON.parse(lines[lines.length - 1]);\nconst job = $('Prepare job').first().json;\nreturn [{ json: { ...job, ...result } }];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "Parse result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.platforms.yt }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000007",
+      "name": "Post to YouTube?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1060,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.video_path }}",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000008",
+      "name": "Read video file",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $('Parse result').item.json.youtube_title }}",
+        "regionCode": "US",
+        "categoryId": "22",
+        "binaryProperty": "data",
+        "options": {
+          "description": "={{ $('Parse result').item.json.youtube_description }}",
+          "privacyStatus": "public",
+          "notifySubscribers": true,
+          "tags": "={{ $('Parse result').item.json.hashtags.join(',') }}"
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000009",
+      "name": "YouTube: upload Short",
+      "type": "n8n-nodes-base.youTube",
+      "typeVersion": 1,
+      "position": [
+        1580,
+        0
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "Y3YWdPzoklYK4IoW",
+          "name": "YouTube - RegesCore AI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.platforms.ig && !!$json.video_url }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000010",
+      "name": "Post to Instagram? (needs public URL)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1060,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "igUserId": "={{ $env.IG_USER_ID }}",
+        "videoUrl": "={{ $json.video_url }}",
+        "caption": "={{ $json.caption }}",
+        "shareToFeed": true,
+        "accessToken": "={{ $env.IG_ACCESS_TOKEN }}",
+        "graphVersion": "v21.0"
+      },
+      "id": "a1000000-0000-4000-8000-000000000011",
+      "name": "Instagram Reels Publisher",
+      "type": "CUSTOM.instagramReelsPublisher",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One summary line for the Discord report / execution log.\nconst r = $('Parse result').first().json;\nconst yt = $('YouTube: upload Short').all().map(i => i.json.id).filter(Boolean);\nlet ig = [];\ntry { ig = $('Instagram Reels Publisher').all().map(i => i.json.publish && i.json.publish.id).filter(Boolean); } catch (e) {}\nlet tt = [];\ntry { tt = $('TikTok Post').all().map(i => i.json.publishId).filter(Boolean); } catch (e) {}\nconst lines = [\n  `**${r.title}**`,\n  r.series ? `S1 E${r.series.episode} ${r.series.format}  •  Ledger $${r.series.ledger_after_usd}` : `topic: ${r.topic}`,\n  r.series ? `next: ${r.series.next_episode_seed}` : '',\n  `variants: ${r.variants.length}  •  ${r.variants[0].duration_seconds}s`,\n  yt.length ? `YouTube: https://youtube.com/shorts/${yt[0]}` : 'YouTube: skipped',\n  ig.length ? `Instagram media id: ${ig[0]}` : 'Instagram: skipped (no public video_url or disabled)',\n  tt.length ? `TikTok publish id: ${tt[0]}` : 'TikTok: skipped (no TIKTOK_ACCESS_TOKEN or disabled)',\n  `files: ${r.job_dir}`,\n];\nreturn [{ json: { content: lines.join('\\n'), title: r.title, youtube_ids: yt, instagram_ids: ig, job_dir: r.job_dir, webhookUrl: $env.DISCORD_WEBHOOK_URL || '' } }];"
+      },
+      "id": "a1000000-0000-4000-8000-000000000012",
+      "name": "Build report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1860,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.webhookUrl }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000013",
+      "name": "Discord webhook set?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2100,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.webhookUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: $json.content }) }}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000014",
+      "name": "Discord report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2360,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c4",
+              "leftValue": "={{ $json.platforms.tiktok && !!$env.TIKTOK_ACCESS_TOKEN }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000015",
+      "name": "Post to TikTok?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1060,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.video_path }}",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000016",
+      "name": "Read video file (TikTok)",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "accessToken": "={{ $env.TIKTOK_ACCESS_TOKEN }}",
+        "source": "FILE_UPLOAD",
+        "binaryProperty": "data",
+        "caption": "={{ $('Parse result').item.json.caption }}",
+        "privacy": "={{ $env.TIKTOK_PRIVACY || 'SELF_ONLY' }}",
+        "disableComment": false,
+        "disableDuet": false,
+        "disableStitch": false,
+        "coverMs": 1000,
+        "waitForStatus": true
+      },
+      "id": "a1000000-0000-4000-8000-000000000017",
+      "name": "TikTok Post",
+      "type": "CUSTOM.tikTokPost",
+      "typeVersion": 1,
+      "position": [
+        1580,
+        620
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Discord / API)": {
+      "main": [
+        [
+          {
+            "node": "Prepare job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 9am (autopilot)": {
+      "main": [
+        [
+          {
+            "node": "Prepare job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual test": {
+      "main": [
+        [
+          {
+            "node": "Prepare job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare job": {
+      "main": [
+        [
+          {
+            "node": "Render short (make_short.py)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render short (make_short.py)": {
+      "main": [
+        [
+          {
+            "node": "Parse result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse result": {
+      "main": [
+        [
+          {
+            "node": "Post to YouTube?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to Instagram? (needs public URL)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to TikTok?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to YouTube?": {
+      "main": [
+        [
+          {
+            "node": "Read video file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read video file": {
+      "main": [
+        [
+          {
+            "node": "YouTube: upload Short",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YouTube: upload Short": {
+      "main": [
+        [
+          {
+            "node": "Build report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to Instagram? (needs public URL)": {
+      "main": [
+        [
+          {
+            "node": "Instagram Reels Publisher",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Build report": {
+      "main": [
+        [
+          {
+            "node": "Discord webhook set?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord webhook set?": {
+      "main": [
+        [
+          {
+            "node": "Discord report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Post to TikTok?": {
+      "main": [
+        [
+          {
+            "node": "Read video file (TikTok)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Read video file (TikTok)": {
+      "main": [
+        [
+          {
+            "node": "TikTok Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok Post": {
+      "main": [
+        [
+          {
+            "node": "Build report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 1800,
+    "saveManualExecutions": true
+  },
+  "staticData": null,
+  "pinData": {},
+  "tags": [],
+  "id": "FacelessShortsPipeline01",
+  "active": false
+}

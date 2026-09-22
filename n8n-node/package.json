@@ -1,0 +1,56 @@
+{
+  "name": "n8n-nodes-social-shorts",
+  "version": "0.2.0",
+  "description": "Publish short vertical videos from n8n to Instagram Reels (Graph API) and TikTok (Content Posting API). YouTube via the built-in n8n node.",
+  "author": "iBoss <dev@davidio.dev>",
+  "license": "MIT",
+  "keywords": [
+    "n8n-community-node-package",
+    "instagram",
+    "reels",
+    "youtube",
+    "shorts",
+    "tiktok",
+    "video",
+    "automation"
+  ],
+  "homepage": "https://github.com/iboss21/n8n-nodes-Social-Shorts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iboss21/n8n-nodes-Social-Shorts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/iboss21/n8n-nodes-Social-Shorts/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-assets.js",
+    "dev": "tsc -w -p tsconfig.json",
+    "prepare": "npm run build",
+    "smoke": "node scripts/smoke.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "axios": "^1.6.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^18.19.0",
+    "n8n-workflow": "^1.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [],
+    "nodes": [
+      "dist/nodes/Instagram/InstagramReels.node.js",
+      "dist/nodes/YouTube/YouTubeShorts.node.js",
+      "dist/nodes/TikTok/TikTokPost.node.js"
+    ]
+  }
+}

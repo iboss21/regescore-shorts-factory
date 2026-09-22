@@ -1,0 +1,12 @@
+# secrets
+pipeline/.env
+*.log
+# renders and generated media
+pipeline/output/
+pipeline/assets/backgrounds/*.mp4
+# the upstream clone (has its own git history); the fixed package lives in n8n-node/
+n8n-nodes-Social-Shorts/
+# build artefacts
+**/node_modules/
+**/dist/
+__pycache__/

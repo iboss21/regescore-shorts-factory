@@ -1,0 +1,6 @@
+anthropic>=1.7
+pydantic>=2
+python-dotenv
+edge-tts>=7
+requests
+boto3

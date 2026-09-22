@@ -12,6 +12,13 @@ story memory ─► free LLM writes next beat ─► free TTS ─► AI scene im
 
 Everything runs on a normal Windows PC. No paid APIs required.
 
+## Get it
+
+- **Free & open source** — clone this repo, or download [**v1.0.0**](https://github.com/iboss21/regescore-shorts-factory/releases/tag/v1.0.0).
+- **Done-for-you bundle ($49)** — packaged setup guide, ready-to-import n8n workflow, show-bible templates for 5 niches, and updates: `BUY_LINK_PENDING`
+
+Live demo channel: [@RegesCore-Ai](https://www.youtube.com/@RegesCore-Ai)
+
 ## Stack (all free)
 
 | Layer | Default | Alternatives (env switch) |

@@ -36,6 +36,7 @@ load_dotenv(HERE / ".env")
 
 import visuals  # scene image generation (ComfyUI / Pollinations)
 import monetize  # affiliate footer for descriptions/captions
+import music  # ACE-Step background beds via ComfyUI
 
 # ---------------------------------------------------------------------------
 # Config (all overridable in pipeline/.env)
@@ -79,6 +80,9 @@ S3_BUCKET = os.getenv("S3_BUCKET")
 S3_PREFIX = os.getenv("S3_PREFIX", "shorts/")
 S3_PRESIGN_SECONDS = int(os.getenv("S3_PRESIGN_SECONDS", "3600"))
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")  # alt to S3: any dir served over https
+
+MUSIC_ENABLED = os.getenv("MUSIC_ENABLED", "true").lower() in ("1", "true", "yes")
+MUSIC_VOLUME = float(os.getenv("MUSIC_VOLUME", "0.14"))   # bed level under the voice (0..1)
 
 W, H = 1080, 1920
 
@@ -420,13 +424,13 @@ def pick_background() -> Optional[Path]:
     return random.choice(vids) if vids else None
 
 
-def render(voice_mp3: Path, srt: Path, out_mp4: Path, duration: float, images: Optional[List[Path]] = None) -> None:
+def render(voice_mp3: Path, srt: Path, out_mp4: Path, duration: float, images: Optional[List[Path]] = None, bed: Optional[Path] = None) -> None:
     """Render a 1080x1920 MP4: background (AI scene slideshow with Ken Burns motion, or a looped
     stock clip, or an animated gradient), burned-in captions, voice track, gentle fade-out."""
     work = out_mp4.parent
     if images:
         try:
-            return _render_slideshow(voice_mp3, srt, out_mp4, duration, images)
+            return _render_slideshow(voice_mp3, srt, out_mp4, duration, images, bed)
         except SystemExit as e:  # ffmpeg failed; fall through to simpler backgrounds
             print(f"      slideshow render failed, falling back: {str(e)[:200]}", file=sys.stderr)
     bg = pick_background()
@@ -441,13 +445,16 @@ def render(voice_mp3: Path, srt: Path, out_mp4: Path, duration: float, images: O
         # animated gradient fallback so the pipeline works with zero assets
         video_in = ["-f", "lavfi", "-i", f"gradients=s={W}x{H}:c0=0x0f172a:c1=0x1e3a8a:c2=0x312e81:speed=0.02:duration={duration+1:.2f}:r=30"]
 
+    a_inputs, a_fx, a_map = _audio_graph(1, bed, duration, 2)
     cmd = [
         FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
         *video_in,
         "-i", voice_mp3.name,
+        *a_inputs,
         "-t", f"{duration:.2f}",
         "-vf", vf,
-        "-map", "0:v:0", "-map", "1:a:0",
+        *(["-filter_complex", a_fx] if a_fx else []),
+        "-map", "0:v:0", "-map", a_map,
         "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30",
         "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
         "-movflags", "+faststart", "-shortest",
@@ -456,7 +463,19 @@ def render(voice_mp3: Path, srt: Path, out_mp4: Path, duration: float, images: O
     _run(cmd, cwd=work)
 
 
-def _render_slideshow(voice_mp3: Path, srt: Path, out_mp4: Path, duration: float, images: List[Path]) -> None:
+def _audio_graph(voice_index: int, bed: Optional[Path], duration: float, next_input_index: int):
+    """Voice only, or voice + looped music bed mixed under it with a fade-out."""
+    if not bed:
+        return [], "", f"{voice_index}:a:0"
+    inputs = ["-stream_loop", "-1", "-i", str(bed)]
+    fx = (
+        f"[{next_input_index}:a]volume={MUSIC_VOLUME},afade=t=in:st=0:d=1.5,afade=t=out:st={max(duration-2.0,0):.2f}:d=2.0[bed];"
+        f"[{voice_index}:a:0][bed]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[aout]"
+    )
+    return inputs, fx, "[aout]"
+
+
+def _render_slideshow(voice_mp3: Path, srt: Path, out_mp4: Path, duration: float, images: List[Path], bed: Optional[Path] = None) -> None:
     """Ken Burns slideshow: each image slowly zooms (alternating in/out), 0.5s crossfades, captions on top."""
     work = out_mp4.parent
     n = len(images)
@@ -491,12 +510,16 @@ def _render_slideshow(voice_mp3: Path, srt: Path, out_mp4: Path, duration: float
         f"{last}eq=brightness=-0.04:saturation=1.05,ass={srt.name},"
         f"fade=t=in:st=0:d=0.4,fade=t=out:st={max(duration-0.6,0):.2f}:d=0.6[vout]"
     )
+    a_inputs, a_fx, a_map = _audio_graph(n, bed, duration, n + 1)
+    if a_fx:
+        filters.append(a_fx)
     cmd = [
         FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
         *inputs,
         "-i", voice_mp3.name,
+        *a_inputs,
         "-filter_complex", ";".join(filters),
-        "-map", "[vout]", "-map", f"{n}:a:0",
+        "-map", "[vout]", "-map", a_map,
         "-t", f"{duration:.2f}",
         "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(fps),
         "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
@@ -543,6 +566,7 @@ def main() -> None:
     ap.add_argument("--variants", type=int, default=1, help="How many hook variants to render (A/B)")
     ap.add_argument("--no-upload", action="store_true")
     ap.add_argument("--no-images", action="store_true", help="skip AI scene images (gradient/stock background)")
+    ap.add_argument("--no-music", action="store_true", help="skip the ACE-Step background music bed")
     ap.add_argument("--quiet", action="store_true", help="Only print the final JSON line")
     ap.add_argument("--job-b64", help="base64 JSON {topic, duration, variants, format, series} - shell-quoting-safe (used by n8n)")
     ap.add_argument("--series", action="store_true", help="RegesCore series mode: continue the story from series/state.json")
@@ -601,6 +625,13 @@ def main() -> None:
         if not images:
             log("      no images produced; using gradient background")
 
+    bed: Optional[Path] = None
+    if MUSIC_ENABLED and not args.no_music:
+        est = int(args.duration * 1.4) + 10
+        log(f"[1c/5] Generating {est}s music bed (ACE-Step via ComfyUI) ...")
+        bed = music.bed_for(getattr(args, "format", "default") if args.series else "default", est, job_dir / "bed.mp3")
+        log("      music ok" if bed else "      no music (ComfyUI/ACE-Step unavailable); voice only")
+
     hooks = script.hooks[: max(1, args.variants)] or [script.title]
     variants = []
     for n, hook in enumerate(hooks):
@@ -620,7 +651,7 @@ def main() -> None:
 
         log(f"[4/5] Rendering {tag} ...")
         mp4 = job_dir / f"short_{tag}.mp4"
-        render(mp3, srt, mp4, dur, images)
+        render(mp3, srt, mp4, dur, images, bed)
         jpg = job_dir / f"cover_{tag}.jpg"
         cover_frame(mp4, jpg)
 
@@ -657,6 +688,7 @@ def main() -> None:
         "hashtags": script.hashtags,
         "job_dir": str(job_dir),
         "scene_images": [str(p) for p in images],
+        "music_bed": str(bed) if bed else None,
         "variants": variants,
         # convenience aliases for the first variant (what n8n usually posts)
         "video_path": variants[0]["video_path"],

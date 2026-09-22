@@ -2,6 +2,8 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import axios from 'axios';
 
+const redact = (text: string, secret: string) => (secret ? text.split(secret).join('***') : text);
+
 export class InstagramReels implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'Instagram Reels Publisher',
@@ -37,20 +39,22 @@ export class InstagramReels implements INodeType {
       const base = `https://graph.facebook.com/${graphVersion}`;
 
       const containerRes = await axios.post(`${base}/${igUserId}/media`, null, {
-        params: { media_type: 'REELS', video_url: videoUrl, caption, share_to_feed: shareToFeed ? 'true' : 'false', access_token: accessToken },
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { media_type: 'REELS', video_url: videoUrl, caption, share_to_feed: shareToFeed ? 'true' : 'false' },
         validateStatus: () => true,
       });
       if (containerRes.status >= 400) {
-        throw new Error(`IG container error ${containerRes.status}: ${JSON.stringify(containerRes.data)}`);
+        throw new Error(`IG container error ${containerRes.status}: ${redact(JSON.stringify(containerRes.data), accessToken)}`);
       }
       const creationId = containerRes.data.id;
 
       const publishRes = await axios.post(`${base}/${igUserId}/media_publish`, null, {
-        params: { creation_id: creationId, access_token: accessToken },
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { creation_id: creationId },
         validateStatus: () => true,
       });
       if (publishRes.status >= 400) {
-        throw new Error(`IG publish error ${publishRes.status}: ${JSON.stringify(publishRes.data)}`);
+        throw new Error(`IG publish error ${publishRes.status}: ${redact(JSON.stringify(publishRes.data), accessToken)}`);
       }
 
       out.push({ json: { creationId, publish: publishRes.data } });

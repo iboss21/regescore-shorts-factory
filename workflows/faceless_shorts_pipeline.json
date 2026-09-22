@@ -23,15 +23,14 @@
         "rule": {
           "interval": [
             {
-              "field": "days",
-              "daysInterval": 1,
-              "triggerAtHour": 9
+              "field": "cronExpression",
+              "expression": "0 8,11,14,17,20 * * *"
             }
           ]
         }
       },
       "id": "a1000000-0000-4000-8000-000000000002",
-      "name": "Daily 9am (autopilot)",
+      "name": "Autopilot 2-5x/day",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
@@ -52,7 +51,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Normalise whatever triggered us into one job for make_short.py.\n// Series mode: RegesCore AI. The story continues from pipeline/series/state.json,\n// so no topic bank is needed - Claude writes the next beat. Formats rotate by weekday.\nconst ROTATION = ['episode', 'lesson', 'episode', 'log', 'episode', 'lesson', 'episode']; // Sun..Sat\n\nconst body = $input.first().json.body || $input.first().json || {};\nconst day = new Date().getDay();\n\nconst format = (body.format || ROTATION[day]).toString().toLowerCase();\nconst topic = (body.prompt || body.topic || '').toString().trim();   // optional producer direction\nconst duration = Number(body.duration) || (format === 'log' ? 35 : 55);\nconst variants = body.ab === false || body.ab === 'false' ? 1 : 2;\nconst series = body.series === undefined ? true : !!body.series;\n\nconst p = body.platforms || {};\nconst platforms = {\n  yt: p.yt !== undefined ? !!p.yt : true,\n  ig: p.ig !== undefined ? !!p.ig : true,\n  tiktok: p.tiktok !== undefined ? !!p.tiktok : true,\n};\n\nconst from_result = (body.from_result || '').toString();   // re-post an already rendered job\nconst job = { topic, duration, variants, format, series, from_result };\nconst jobB64 = Buffer.from(JSON.stringify(job), 'utf8').toString('base64');\nconst BS = String.fromCharCode(92);\nconst pipelineDir = ($env.SHORTS_PIPELINE_DIR || 'G:/YoutubeFaceless-Channel and social media/pipeline').split(BS).join('/');\n\nreturn [{ json: { topic, duration, variants, format, series, platforms, jobB64, pipelineDir, interaction: body.interaction || null } }];"
+        "jsCode": "// Normalise whatever triggered us into one job for make_short.py.\n// Series mode: RegesCore AI. The story continues from pipeline/series/state.json,\n// so no topic bank is needed - Claude writes the next beat. Formats rotate by weekday.\n// 5 posts/day (YouTube API quota allows max 6 uploads/day). Slot -> format: 2 story episodes, 2 lessons, 1 log.\nconst SLOTS = { 8: 'episode', 11: 'lesson', 14: 'log', 17: 'episode', 20: 'lesson' };\n\n// --- auth: webhook calls must carry the shared secret (manual/schedule runs have no headers) ---\nconst hdrs = $input.first().json.headers || null;\nif (hdrs) {\n  const want = $env.SHORTS_WEBHOOK_SECRET || '';\n  const got = hdrs['x-shorts-secret'] || '';\n  if (!want || got !== want) throw new Error('Unauthorized webhook call (bad or missing X-Shorts-Secret)');\n}\nconst body = $input.first().json.body || $input.first().json || {};\nconst hour = new Date().getHours();\nconst nearest = Object.keys(SLOTS).map(Number).reduce((a, b) => Math.abs(b - hour) < Math.abs(a - hour) ? b : a);\n\n// Organic cadence: each day posts 2-5 times, picked pseudo-randomly from the 5 slots (stable per date).\nconst isScheduled = !hdrs && !body.format && !body.prompt && !body.topic && !body.from_result;\nif (isScheduled) {\n  const d = new Date();\n  const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;\n  let h = 2166136261; for (const ch of dayKey) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }\n  const rnd = (k) => { h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0; h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0; return (h >>> 0) % k; };\n  const count = 2 + rnd(4);                         // 2..5 posts today\n  const slots = Object.keys(SLOTS).map(Number);\n  for (let i = slots.length - 1; i > 0; i--) { const j = rnd(i + 1); [slots[i], slots[j]] = [slots[j], slots[i]]; }\n  const active = slots.slice(0, count);\n  if (!active.includes(nearest)) return [];        // skip this slot today\n}\nconst format = (body.format || SLOTS[nearest]).toString().toLowerCase();\nconst topic = (body.prompt || body.topic || '').toString().trim();   // optional producer direction\nconst duration = Number(body.duration) || (format === 'log' ? 35 : 55);\nconst variants = body.ab === false || body.ab === 'false' ? 1 : 2;\nconst series = body.series === undefined ? true : !!body.series;\n\nconst p = body.platforms || {};\nconst platforms = {\n  yt: p.yt !== undefined ? !!p.yt : true,\n  ig: p.ig !== undefined ? !!p.ig : true,\n  tiktok: p.tiktok !== undefined ? !!p.tiktok : true,\n};\n\nconst from_result = (body.from_result || '').toString();   // re-post an already rendered job\nconst job = { topic, duration, variants, format, series, from_result };\nconst jobB64 = Buffer.from(JSON.stringify(job), 'utf8').toString('base64');\nconst BS = String.fromCharCode(92);\nconst pipelineDir = ($env.SHORTS_PIPELINE_DIR || 'G:/YoutubeFaceless-Channel and social media/pipeline').split(BS).join('/');\n\nreturn [{ json: { topic, duration, variants, format, series, platforms, jobB64, pipelineDir, interaction: body.interaction || null } }];"
       },
       "id": "a1000000-0000-4000-8000-000000000004",
       "name": "Prepare job",
@@ -371,17 +370,6 @@
         ]
       ]
     },
-    "Daily 9am (autopilot)": {
-      "main": [
-        [
-          {
-            "node": "Prepare job",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Manual test": {
       "main": [
         [
@@ -539,6 +527,17 @@
         [
           {
             "node": "Build report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Autopilot 2-5x/day": {
+      "main": [
+        [
+          {
+            "node": "Prepare job",
             "type": "main",
             "index": 0
           }

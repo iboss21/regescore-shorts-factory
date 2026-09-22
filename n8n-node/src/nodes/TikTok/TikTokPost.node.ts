@@ -95,7 +95,7 @@ export class TikTokPost implements INodeType {
       // 1) init
       const init = await axios.post(`${API}/post/publish/video/init/`, body, { headers, validateStatus: () => true });
       if (init.status >= 400 || init.data?.error?.code !== 'ok') {
-        throw new Error(`TikTok init error ${init.status}: ${JSON.stringify(init.data)}`);
+        throw new Error(`TikTok init error ${init.status}: ${JSON.stringify({ error: init.data?.error, log_id: init.data?.error?.log_id })}`);
       }
       const publishId: string = init.data.data.publish_id;
 
@@ -129,7 +129,7 @@ export class TikTokPost implements INodeType {
           await new Promise((r) => setTimeout(r, 4000));
         }
         if ((status as { status?: string }).status === 'FAILED') {
-          throw new Error(`TikTok publish failed: ${JSON.stringify(status)}`);
+          throw new Error(`TikTok publish failed: ${JSON.stringify({ status: (status as any).status, fail_reason: (status as any).fail_reason })}`);
         }
       }
 

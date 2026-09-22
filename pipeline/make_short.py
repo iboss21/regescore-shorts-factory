@@ -35,6 +35,7 @@ HERE = Path(__file__).resolve().parent
 load_dotenv(HERE / ".env")
 
 import visuals  # scene image generation (ComfyUI / Pollinations)
+import monetize  # affiliate footer for descriptions/captions
 
 # ---------------------------------------------------------------------------
 # Config (all overridable in pipeline/.env)
@@ -561,7 +562,10 @@ def main() -> None:
         args.from_result = job.get("from_result") or args.from_result
 
     if args.from_result:
-        print(json.dumps(json.loads(Path(args.from_result).read_text(encoding="utf-8"))))
+        rp = Path(args.from_result).resolve()
+        if rp.name != "result.json" or not rp.is_relative_to(OUT_ROOT.resolve()):
+            sys.exit("from_result must point to <OUTPUT_DIR>/<job>/result.json")
+        print(json.dumps(json.loads(rp.read_text(encoding="utf-8"))))
         return
 
     if not args.topic and not args.script_file and not args.series:
@@ -638,6 +642,10 @@ def main() -> None:
         })
 
     hashtags = " ".join(f"#{h.lstrip('#')}" for h in script.hashtags)
+    spoken_all = " ".join(script.hooks) + " " + script.body + " " + script.title
+    aff_cfg = monetize._load()
+    yt_footer = monetize.footer_youtube(spoken_all, script.hashtags, aff_cfg.get("channel_links"))
+    cap_footer = monetize.footer_caption(spoken_all, script.hashtags, os.getenv("LINK_IN_BIO", ""))
     result = {
         "ok": True,
         "id": job_dir.name,

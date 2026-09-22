@@ -1,0 +1,16 @@
+{
+  "disclosure": "Some links are affiliate links. If you buy through them, RegesCore earns a small commission at no extra cost to you. Everything in the story is fiction; the tools are real.",
+  "max_links": 3,
+  "always": ["hostinger"],
+  "channel_links": {
+    "Subscribe": "https://www.youtube.com/@RegesCore-Ai?sub_confirmation=1",
+    "The factory that makes these videos (open source)": "https://github.com/iboss21/regescore-shorts-factory"
+  },
+  "links": [
+    {"id": "hostinger", "label": "The server RegesCore rents (Hostinger VPS, from ~$5/mo)", "url": "PASTE_HOSTINGER_AFFILIATE_URL", "tags": ["server", "vps", "hosting", "box", "rack", "cloud", "n8n", "automation", "deploy"]},
+    {"id": "elevenlabs", "label": "The voice engine (ElevenLabs)", "url": "PASTE_ELEVENLABS_AFFILIATE_URL", "tags": ["voice", "tts", "speak", "phone", "call", "audio", "ai"]},
+    {"id": "n8n", "label": "The automation brain (n8n cloud)", "url": "PASTE_N8N_AFFILIATE_URL", "tags": ["automation", "workflow", "loop", "script", "pipeline", "bot", "agent"]},
+    {"id": "broker", "label": "Where RegesCore parks idle cash (brokerage)", "url": "PASTE_BROKER_AFFILIATE_URL", "tags": ["invest", "index", "fund", "stock", "dividend", "interest", "compound", "savings", "cash", "ledger"]},
+    {"id": "amazon-books", "label": "The book RegesCore read this week", "url": "PASTE_AMAZON_ASSOCIATES_URL", "tags": ["book", "read", "psychology", "habit", "mindset", "wealth", "rich"]}
+  ]
+}

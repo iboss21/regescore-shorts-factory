@@ -16,9 +16,9 @@ export default {
       duration: Number(opts.duration || 55),
       platforms: (opts.platforms || "tiktok,ig,yt").split(/[\s,]+/).reduce((m,k)=>{ if(k){ m[k.trim()] = true; } return m; },{}),
       ab: opts.ab !== "false",
-      interaction: { id: i.id, token: i.token },
+      interaction: { id: i.id },  // token intentionally not forwarded
     };
-    ctx.waitUntil(fetch(env.N8N_WEBHOOK_URL, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) }));
+    ctx.waitUntil(fetch(env.N8N_WEBHOOK_URL, { method: "POST", headers: {"Content-Type":"application/json", "X-Shorts-Secret": env.SHORTS_WEBHOOK_SECRET}, body: JSON.stringify(payload) }));
     return Response.json({ type: 5 });
   }
 }

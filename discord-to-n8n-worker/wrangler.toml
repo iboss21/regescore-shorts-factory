@@ -5,3 +5,5 @@ compatibility_date = "2024-09-01"
 [vars]
 DISCORD_PUBLIC_KEY = "YOUR_DISCORD_PUBLIC_KEY"
 N8N_WEBHOOK_URL = "https://YOUR-N8N-DOMAIN/webhook/shortform"
+
+# set with: npx wrangler secret put SHORTS_WEBHOOK_SECRET  (same value as SHORTS_WEBHOOK_SECRET in pipeline/.env)

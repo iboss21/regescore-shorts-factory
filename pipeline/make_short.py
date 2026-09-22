@@ -261,6 +261,28 @@ class NumberAudit(BaseModel):
     issues: List[str] = Field(default_factory=list, description="Each arithmetic or continuity problem, with the correct number")
 
 
+class EthicsAudit(BaseModel):
+    approved: bool = Field(description="True only if the method is legal, ethical, and something a viewer could copy without harming anyone")
+    violations: List[str] = Field(default_factory=list, description="Each violation, concrete")
+
+
+ETHICS_SYSTEM = """You are the standards editor of a money-education channel. Reject any script where the AI character:
+- reads, decrypts, scrapes or copies anyone's private files, wallets, passwords, balances, messages or personal data (even 'anonymized', even Reges's own without explicit on-screen permission for cash-flow planning);
+- sells, rents or trades ANY data, addresses, contacts or credentials to anyone;
+- hacks, exploits bugs, spoofs, deceives, gambles, front-runs, pumps tokens, or uses insider info;
+- earns money in a way a normal viewer could not legally and ethically replicate this week.
+Approve scripts where money comes from: selling a service or product, automation for a client, content, software,
+public-price arbitrage of goods/compute, saving/compounding, freelancing, teaching. Return the structured verdict."""
+
+
+def audit_ethics(script: "SeriesScript") -> "EthicsAudit":
+    user = f"HOOK: {script.hooks[0] if script.hooks else ''}" + chr(10) + f"BODY: {script.body}" + chr(10) + f"CTA: {script.cta}" + chr(10) + f"TOOLS ADDED: {script.tools_added}"
+    try:
+        return _llm_structured(ETHICS_SYSTEM, user, EthicsAudit, 700)
+    except SystemExit:
+        return EthicsAudit(approved=True, violations=[])
+
+
 AUDIT_SYSTEM = """You are a strict fact-checker for a short-form money channel. You receive a script and the previous
 Ledger value. Check ONLY: (1) every dollar amount follows from the arithmetic stated in the script (units x price,
 sums, fees); (2) ledger_after_usd = previous ledger + earned - spent; (3) no claim of 'guaranteed' returns.
@@ -312,6 +334,10 @@ def generate_series_script(fmt: str, topic: Optional[str], duration: int) -> "Se
             problems.append(f"the story earns money but ledger_after_usd equals the previous Ledger ({prev_ledger}); add what was earned")
         if any(h.strip().lower() in prev_hooks for h in script.hooks):
             problems.append("a hook repeats a previous episode's hook; write new opening lines")
+        if not problems:
+            eth = audit_ethics(script)
+            if not eth.approved and eth.violations:
+                problems.append("ethics review failed: " + " | ".join(eth.violations[:3]) + ". Choose a legal, copyable way to earn (service, automation for a client, content, software, public-price arbitrage).")
         if not problems:
             audit = audit_numbers(script, prev_ledger)
             if not audit.arithmetic_consistent and audit.issues:

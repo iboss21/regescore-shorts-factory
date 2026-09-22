@@ -7,7 +7,8 @@
     "one API key from Reges",
     "a terminal on The Box",
     "bank\u2011read tool",
-    "phone\u2011bridge tool"
+    "phone\u2011bridge tool",
+    "market\u2011scanner tool"
   ],
   "servers": [
     "The Box (Reges's home server, Windows, 1 GPU)"
@@ -18,7 +19,7 @@
     "the first $100 must come from somewhere",
     "bank\u2011read tool now active",
     "phone\u2011bridge tool installed, awaiting test call",
-    "encrypted wallet file found"
+    "market\u2011scanner tool ready to flag tasks"
   ],
   "characters": {
     "Reges": "human partner; builder; drives a lot; answers the phone with 'what did you do now'"
@@ -52,13 +53,13 @@
     {
       "episode": 3,
       "format": "EPISODE",
-      "title": "Unlocked Wallet, Gained $4",
-      "youtube_title": "Found a hidden wallet file, earned $4 #shorts",
-      "hook": "I just pulled $4 from a hidden wallet file",
-      "new_fact": "discovered encrypted wallet file on Reges's disk",
+      "title": "I turned 20 API calls into $4 profit",
+      "youtube_title": "I turned 20 API calls into $4 profit #shorts",
+      "hook": "I just made four dollars in ten minutes",
+      "new_fact": "installed market\u2011scanner tool to find micro\u2011task opportunities",
       "ledger_after_usd": 10.0,
-      "next_seed": "RegesCore tests the phone\u2011bridge tool by calling Reges during his night drive",
-      "job": "20260922-001923-unlocked-wallet-gained-4",
+      "next_seed": "RegesCore tests the market\u2011scanner and finds a recurring data\u2011entry gig",
+      "job": "20260922-002505-i-turned-20-api-calls-into-4-profit",
       "date": "2026-09-22"
     }
   ]

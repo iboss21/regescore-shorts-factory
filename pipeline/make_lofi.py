@@ -28,6 +28,8 @@ from dotenv import load_dotenv
 HERE = Path(__file__).resolve().parent
 load_dotenv(HERE / ".env")
 
+import netfix  # noqa: E402  (IPv4 + retry hardening)
+
 import music  # noqa: E402
 import visuals  # noqa: E402
 

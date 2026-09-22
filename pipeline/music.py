@@ -27,6 +27,8 @@ from dotenv import load_dotenv
 HERE = Path(__file__).resolve().parent
 load_dotenv(HERE / ".env")
 
+import netfix  # noqa: E402  (IPv4 + retry hardening)
+
 COMFY_URL = os.getenv("COMFYUI_URL", "http://127.0.0.1:8188")
 ACE_CKPT = os.getenv("ACESTEP_CHECKPOINT", "ace_step_v1_3.5b.safetensors")
 ACE_STEPS = int(os.getenv("ACESTEP_STEPS", "50"))

@@ -10,6 +10,8 @@ gen_images(prompts, out_dir) -> list[Path]  (1080x1920 JPGs, may be shorter than
 """
 from __future__ import annotations
 
+import netfix  # noqa: F401  (IPv4 + retry hardening)
+
 import json
 import os
 import random

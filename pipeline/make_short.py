@@ -25,6 +25,7 @@ import random
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import List, Optional
 
@@ -34,6 +35,7 @@ from pydantic import BaseModel, Field
 HERE = Path(__file__).resolve().parent
 load_dotenv(HERE / ".env")
 
+import netfix  # force IPv4 + retry transient DNS/network failures (hotspot-friendly)
 import visuals  # scene image generation (ComfyUI / Pollinations)
 import monetize  # affiliate footer for descriptions/captions
 import music  # ACE-Step background beds via ComfyUI
@@ -189,7 +191,11 @@ def _llm_structured(system: str, user: str, model_cls, max_tokens: int):
                     body.pop("response_format", None)  # server doesn't support JSON mode
                     r = requests.post(url, headers=headers, json=body, timeout=180)
             except requests.RequestException as e:
-                last_err = f"network: {e}"; break
+                last_err = f"network: {e}"
+                if attempt < 2:  # transient DNS/connection blip -> wait and retry the same provider
+                    time.sleep(5 * (attempt + 1))
+                    continue
+                break
             if r.status_code == 400 and "json_validate_failed" in r.text:
                 last_err = "provider-side JSON validation failed (output truncated or malformed)"; continue  # retry same provider
             if r.status_code >= 400:

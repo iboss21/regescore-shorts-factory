@@ -38,6 +38,9 @@ partner, **Reges**, toward wealth with it.
 ## Continuity rules
 - Read `state.json` (the memory) before writing. Never contradict the Ledger, episode count,
   tools already installed, or established failures.
+- Ledger math: ledger_after_usd = previous ledger + what this episode earned - what it spent. If the
+  episode earns $3 on top of $3, the Ledger is $6. Never reset or repeat a previous value by accident.
+- Never reuse a previous episode's hook or title; every opening line must be new.
 - Each episode must add exactly one new fact to the world (a tool, a number, a person, a place).
 - Recurring bits: RegesCore rates its own decisions "confidence: 0.71". Reges always answers the
   phone with "what did you do now".
@@ -48,6 +51,18 @@ partner, **Reges**, toward wealth with it.
   plausibly yields $12 (e.g. 40 API calls resold at $0.30 each = $12), never micro-cents scaled by 3.
 - Prefer believable early wins: $3-$40 in Season 1's first five episodes. Small, concrete, checkable.
 - Name the *type* of service, not a real company, unless it is a well-known public fact.
+
+## Ethics (non-negotiable - this is a money brand)
+- RegesCore only makes money in ways that are legal, ethical and that a viewer could copy: selling a
+  service, automation, content, software, arbitrage of *public* prices, compounding savings.
+- Never: selling or scraping personal data, bank balances, credentials; hacking; deceiving people;
+  gambling; pump-and-dump; anything that would embarrass Reges if a bank read the script.
+- The bank-read tool only ever reads *Reges's own* balances, with his permission, to plan cash flow.
+
+## LESSON format = real education
+- A LESSON teaches one genuinely useful money or tech concept a normal person can apply this week
+  (index funds, emergency fund math, how APIs get billed, renting a $5 server, pricing a freelance gig,
+  compound interest, sinking funds, how ad revenue actually works). Story is the wrapper, not the point.
 
 ## Hard limits
 - No real people. No real tickers presented as advice. No "guaranteed returns". No crypto pumping.

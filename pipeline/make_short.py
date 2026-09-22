@@ -146,11 +146,15 @@ def _llm_structured(system: str, user: str, model_cls, max_tokens: int):
     import requests
 
     schema = model_cls.model_json_schema()
+    # compact key->description map instead of the full JSON schema (Groq free tier is 8k tokens/minute)
+    compact = {
+        k: (v.get("description", "") + (" [list of strings]" if v.get("type") == "array" else "") + (" [number]" if v.get("type") in ("number", "integer") else "") + (" [true/false]" if v.get("type") == "boolean" else ""))
+        for k, v in schema.get("properties", {}).items()
+    }
     sys_msg = (
         system
-        + "\n\nRespond with ONE JSON object only, no markdown fences, no commentary. "
-        + "It must validate against this JSON schema:\n"
-        + json.dumps(schema)
+        + "\n\nRespond with ONE JSON object only, no markdown fences, no commentary. Required keys and what each must contain:\n"
+        + json.dumps(compact, ensure_ascii=False)
     )
     errors = []
     for prov in _llm_providers():
@@ -173,15 +177,21 @@ def _llm_structured(system: str, user: str, model_cls, max_tokens: int):
                 "max_tokens": max_tokens,
                 "response_format": {"type": "json_object"},
             }
+            if "gpt-oss" in model:
+                # reasoning tokens count against max_tokens: long generations get "low", short checks "medium"
+                body["reasoning_effort"] = os.getenv("LLM_REASONING_EFFORT", "low" if max_tokens > 2000 else "medium")
+                body["max_tokens"] = int(max_tokens * (1.4 + 0.4 * attempt))  # headroom for hidden reasoning
             if attempt > 0 and last_err:
                 body["messages"].append({"role": "user", "content": f"Your previous JSON was invalid: {last_err}. Return corrected JSON only."})
             try:
                 r = requests.post(url, headers=headers, json=body, timeout=180)
-                if r.status_code == 400 and "response_format" in r.text:
+                if r.status_code == 400 and "response_format" in r.text and "json_validate_failed" not in r.text:
                     body.pop("response_format", None)  # server doesn't support JSON mode
                     r = requests.post(url, headers=headers, json=body, timeout=180)
             except requests.RequestException as e:
                 last_err = f"network: {e}"; break
+            if r.status_code == 400 and "json_validate_failed" in r.text:
+                last_err = "provider-side JSON validation failed (output truncated or malformed)"; continue  # retry same provider
             if r.status_code >= 400:
                 last_err = f"HTTP {r.status_code}: {r.text[:300]}"; break  # auth/quota/rate limit -> next provider
             try:
@@ -197,6 +207,7 @@ def _llm_structured(system: str, user: str, model_cls, max_tokens: int):
             except Exception as e:  # pydantic ValidationError / JSON error -> retry same provider
                 last_err = str(e)[:400]
         errors.append(f"{prov['name']} ({model}): {last_err}")
+        print(f"      llm {prov['name']} {model} failed: {str(last_err)[:200]}", file=sys.stderr, flush=True)
     sys.exit("All LLM providers failed:\n  " + "\n  ".join(errors))
 
 
@@ -221,6 +232,7 @@ class SeriesScript(ShortScript):
     failures_added: List[str] = Field(description="New failures/setbacks that happened this episode, empty if none")
     open_threads: List[str] = Field(description="Updated list of unresolved threads to carry forward (3-6 items)")
     next_episode_seed: str = Field(description="One-line idea for what should happen next, for continuity")
+    math_check: str = Field(description="Show every calculation behind every dollar figure in the script, e.g. '10 x $0.30 = $3 cost; 10 x $0.60 = $6 revenue; $6 - $3 = $3 profit; ledger $3 + $3 = $6'. The script text must agree with this.")
 
 
 SERIES_SYSTEM = """You are the writers' room for a serialized faceless short-form channel.
@@ -244,6 +256,31 @@ def _load_state() -> dict:
     return json.loads((SERIES_DIR / "state.json").read_text(encoding="utf-8"))
 
 
+class NumberAudit(BaseModel):
+    arithmetic_consistent: bool = Field(description="True only if every dollar figure follows from the stated units x prices, and the ledger update matches")
+    issues: List[str] = Field(default_factory=list, description="Each arithmetic or continuity problem, with the correct number")
+
+
+AUDIT_SYSTEM = """You are a strict fact-checker for a short-form money channel. You receive a script and the previous
+Ledger value. Check ONLY: (1) every dollar amount follows from the arithmetic stated in the script (units x price,
+sums, fees); (2) ledger_after_usd = previous ledger + earned - spent; (3) no claim of 'guaranteed' returns.
+Be literal: if the script says 'two spreads of $0.50' the profit is $1.00, not $5. Return the structured verdict."""
+
+
+def audit_numbers(script: "SeriesScript", prev_ledger: float) -> "NumberAudit":
+    user = (
+        f"Previous Ledger: ${prev_ledger:.2f}" + chr(10)
+        + f"ledger_after_usd claimed: ${script.ledger_after_usd:.2f}" + chr(10) * 2
+        + f"HOOK: {script.hooks[0] if script.hooks else ''}" + chr(10)
+        + f"BODY: {script.body}" + chr(10)
+        + f"CTA: {script.cta}"
+    )
+    try:
+        return _llm_structured(AUDIT_SYSTEM, user, NumberAudit, 1500)
+    except SystemExit:
+        return NumberAudit(arithmetic_consistent=True, issues=[])  # auditor unavailable -> do not block
+
+
 def generate_series_script(fmt: str, topic: Optional[str], duration: int) -> "SeriesScript":
     bible = (SERIES_DIR / "bible.md").read_text(encoding="utf-8")
     state = _load_state()
@@ -259,7 +296,42 @@ def generate_series_script(fmt: str, topic: Optional[str], duration: int) -> "Se
     if topic:
         user += f"\nDirection from the producer for this one: {topic}"
     system = SERIES_SYSTEM.format(bible=bible, state=json.dumps(state_for_prompt, indent=1))
-    return _llm_structured(system, user, SeriesScript, 6000)
+    prev_ledger = float(state.get("ledger_usd", 0))
+    prev_hooks = {h.get("hook", "").strip().lower() for h in state.get("history", [])}
+    banned = re.compile(r"(sell|selling|sold|scrap\w*|harvest\w*|leak\w*).{0,60}(data|balances?|credentials?|passwords?|personal info\w*)", re.I)
+    feedback = ""
+    for attempt in range(3):
+        script = _llm_structured(system + feedback, user, SeriesScript, 6000)
+        problems = []
+        spoken = " ".join(script.hooks) + " " + script.body + " " + script.cta
+        if banned.search(spoken):
+            problems.append("the script monetizes personal/bank data - forbidden by the Ethics section; use a legal, copyable method")
+        if script.ledger_after_usd < prev_ledger and not script.failures_added:
+            problems.append(f"ledger_after_usd ({script.ledger_after_usd}) is below the previous Ledger ({prev_ledger}) with no failure explaining it")
+        if fmt != "LOG" and abs(script.ledger_after_usd - prev_ledger) < 0.01 and re.search(r"\$\s?\d", spoken):
+            problems.append(f"the story earns money but ledger_after_usd equals the previous Ledger ({prev_ledger}); add what was earned")
+        if any(h.strip().lower() in prev_hooks for h in script.hooks):
+            problems.append("a hook repeats a previous episode's hook; write new opening lines")
+        if not problems:
+            audit = audit_numbers(script, prev_ledger)
+            if not audit.arithmetic_consistent and audit.issues:
+                problems.append("arithmetic audit failed: " + " | ".join(audit.issues[:4]))
+        if not problems:
+            return script
+        print(f"      script rejected ({attempt+1}/3): " + "; ".join(problems), file=sys.stderr, flush=True)
+        feedback = "\n\nPRODUCER NOTES ON YOUR LAST DRAFT (fix all): " + "; ".join(problems)
+    # Safe fallback: a concept-only episode that earns nothing, so the slot still ships.
+    print("      falling back to a no-earnings concept episode", file=sys.stderr, flush=True)
+    safe_user = user + chr(10) * 2 + (
+        f"PRODUCER OVERRIDE: In this one RegesCore earns and spends NOTHING. ledger_after_usd must be exactly {prev_ledger}. "
+        "No dollar amounts other than the Ledger. Teach or show one idea, end with a question."
+    )
+    for _ in range(2):
+        script = _llm_structured(system, safe_user, SeriesScript, 6000)
+        spoken = " ".join(script.hooks) + " " + script.body + " " + script.cta
+        if not banned.search(spoken) and abs(script.ledger_after_usd - prev_ledger) < 0.01:
+            return script
+    sys.exit("Series script failed validation, including the safe fallback")
 
 
 def commit_series_state(script: "SeriesScript", job_id: str) -> None:

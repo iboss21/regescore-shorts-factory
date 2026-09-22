@@ -19,6 +19,7 @@ Everything runs on a normal Windows PC. No paid APIs required.
 | Script | Groq `openai/gpt-oss-120b` (free tier) | OpenRouter `:free` models, Gemini free tier, LM Studio (offline), Anthropic (paid, best) — auto-fallback chain |
 | Voice | `edge-tts` Microsoft neural voices | ElevenLabs |
 | Images | **ComfyUI** on your GPU (Juggernaut-XL) | Pollinations (hosted FLUX, no key), none (gradient) |
+| Music | **ACE-Step** inside ComfyUI (original tracks, ~18 s per minute of audio) | off |
 | Render | FFmpeg | — |
 | Orchestration | n8n community edition (local) | Docker/VPS later |
 | Hosting for IG URL | S3 presigned | any https folder |
@@ -29,6 +30,10 @@ Everything runs on a normal Windows PC. No paid APIs required.
 |---|---|
 | `pipeline/make_short.py` | The factory. `--series` continues the story; `--topic` makes a one-off; `--script-file` renders a fixed script. |
 | `pipeline/visuals.py` | Scene image generation (ComfyUI API / Pollinations). |
+| `pipeline/music.py` | Original music via ACE-Step inside ComfyUI: background beds for shorts, full tracks for radio. |
+| `pipeline/make_lofi.py` | Long-form 'RegesCore Radio' videos (30-60 min lofi/ambient/synth/piano) for the 4,000-watch-hour route. Weekly slot in the workflow. |
+| `pipeline/monetize.py` + `affiliates.json` | Affiliate/tool links matched to each episode, appended to descriptions. |
+| `BUSINESS.md` | Revenue plan, weekly loop, Gumroad listing copy. |
 | `pipeline/series/bible.md` | The show bible: premise, voice, formats (EPISODE / LESSON / LOG), number rules, hard limits. **Edit this to steer the show.** |
 | `pipeline/series/state.json` | Story memory: episode counter, Ledger, tools installed, history. Updated after every render. |
 | `pipeline/.env.example` | All settings. Copy to `.env`, add your keys. |

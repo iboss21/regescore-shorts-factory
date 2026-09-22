@@ -30,6 +30,25 @@ Honest expectation: months, not days. Lines 1–2 are the only near-term cash; 3
 ## Costs
 $0 software. Electricity for the GPU. Optional later: VPS for 24/7 n8n (~$5/mo, Hostinger).
 
+## Selling rail: Stripe (found live, no new account needed)
+
+The connected Stripe account **LAKI eShop** (`acct_1RZAFKMa7uGjWLsCUMlY`, livemode) can sell the product
+today - Gumroad is optional. Claude is blocked from creating live products/payment links without the
+owner's explicit approval, so this is queued, not done.
+
+What will be created on approval (3 API calls, all reversible - archive the product / deactivate the link):
+1. **Product**: "AI Shorts Factory - $0/month faceless video automation", url github.com/iboss21/regescore-shorts-factory
+2. **Price**: one-time USD **$49.00** (4900)
+3. **Payment link**: card + wallets; after payment redirect to the repo's Releases page (automatic delivery);
+   promotion codes enabled; billing address auto.
+
+Then Claude puts the link in: the repo README, every YouTube description (`affiliates.json` -> `always`),
+the channel About, and the video pinned comments.
+
+Open question for the owner: the repo is public and free, so buyers pay for the packaged setup guide,
+the ready-to-import workflow, the niche templates and updates. Keep that honest in the listing copy
+(the FAQ below already says it).
+
 ## Gumroad listing (paste-ready)
 
 **Title:** AI Shorts Factory — $0/month faceless YouTube/TikTok/Instagram automation (n8n + free AI)
